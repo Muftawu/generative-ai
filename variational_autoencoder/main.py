@@ -230,6 +230,30 @@ def visualize_reconstructions(model, dataloader, device, num_images=6):
     plt.show()
 
 
+def get_beta(epoch, total_epochs, max_beta=1.0):
+    progress = epoch / (total_epochs - 1)
+    beta = max_beta * progress
+    return beta
+
+
+def inspect_latent_statistics(model, dataloader, device):
+    model.eval()
+    all_mu = []
+
+    with torch.no_grad():
+        for images in dataloader:
+            images = images.to(device)
+            mu, logvar = model.encoder(images)
+            all_mu.append(mu.cpu())
+    all_mu = torch.cat(all_mu, dim=0)
+
+    print("Latent shape:", all_mu.shape)
+    print("Mean:", all_mu.mean().item())
+    print("Std:", all_mu.std().item())
+    print("Min:", all_mu.min().item())
+    print("Max:", all_mu.max().item())
+
+
 if __name__ == "__main__":
     random.seed(42)
 
@@ -275,7 +299,7 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     EPOCHS = 50
-    BETA = 1.0
+    MAX_BETA = 1.0
 
     train_total_history = []
     train_recon_history = []
@@ -285,14 +309,27 @@ if __name__ == "__main__":
     val_recon_history = []
     val_kl_history = []
 
-    # actual training loop
+    best_val_loss = float("inf")
+
     for epoch in range(EPOCHS):
+
+        beta = get_beta(epoch, EPOCHS, max_beta=MAX_BETA)
+
+        # ------------------
+        # Training
+        # ------------------
         train_loss, train_recon, train_kl = train_one_epoch(
-            model, train_loader, optimizer, device, beta=BETA
+            model, train_loader, optimizer, device, beta=beta
         )
 
-        val_loss, val_recon, val_kl = validate(model, val_loader, device, beta=BETA)
+        # -------------------
+        # Validation
+        # -------------------
+        val_loss, val_recon, val_kl = validate(model, val_loader, device, beta=beta)
 
+        # -------------------
+        # Save history
+        # -------------------
         train_total_history.append(train_loss)
         train_recon_history.append(train_recon)
         train_kl_history.append(train_kl)
@@ -301,14 +338,34 @@ if __name__ == "__main__":
         val_recon_history.append(val_recon)
         val_kl_history.append(val_kl)
 
+        # -------------------
+        # Save best model
+        # ------------------
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            checkpoint = {
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "latent_dim": 128,
+                "beta": beta,
+                "epoch": epoch + 1,
+                "val_loss": val_loss,
+            }
+            torch.save(checkpoint, "vae_best.pth")
+            print("Saved new best model.")
+
+        # ---------------------
+        # Print statistics
+        # ---------------------
         print(
             f"Epoch [{epoch + 1}/{EPOCHS}] "
-            f"| Train Loss: {train_loss:.4f} "
-            f"| Train Recon: {train_recon:.4f} "
-            f"| Train KL: {train_kl:.4f} "
-            f"| Val Loss: {val_loss:.4f} "
-            f"| Val Recon: {val_recon:.4f} "
-            f"| Val KL: {val_kl:.4f}"
+            f"| Beta: {beta:.4f} "
+            f"| Train Loss: {train_loss:.6f} "
+            f"| Train Recon: {train_recon:.6f} "
+            f"| Train KL: {train_kl:.8f} "
+            f"| Val Loss: {val_loss:.6f} "
+            f"| Val Recon: {val_recon:.6f} "
+            f"| Val KL: {val_kl:.8f}"
         )
 
     # plot histories
@@ -316,22 +373,8 @@ if __name__ == "__main__":
     plot_training_history(train_recon_history, val_recon_history, "Reconstruction Loss")
     plot_training_history(train_kl_history, val_kl_history, "KL Divergence")
 
-    # save model + optimizer + val loss
-    checkpoint = {
-        "model_state_dict": model.state_dict(),
-        "optimizer_state_dict": optimizer.state_dict(),
-        "latent_dim": 128,
-        "beta": BETA,
-        "epoch": EPOCHS + 1,
-        "val_loss": sum(val_total_history) / len(val_total_history),
-    }
-
-    best_val_loss = float("inf")
-    val_loss = sum(val_total_history) / len(val_total_history)
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        torch.save(checkpoint, "vae_best.pth")
-        print("Saved new best model.")
-
     # visualize reconstruction after passing in an image
     visualize_reconstructions(model, val_loader, device)
+
+    # inspect our latent space
+    inspect_latent_statistics(model, val_loader, device)
