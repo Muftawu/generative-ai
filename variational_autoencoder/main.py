@@ -230,6 +230,34 @@ def visualize_reconstructions(model, dataloader, device, num_images=6):
     plt.show()
 
 
+def visualize_mu_reconstructions(model, dataloader, device, num_images=6):
+    model.eval()
+
+    images = next(iter(dataloader))
+    images = images[:num_images].to(device)
+
+    with torch.no_grad():
+        mu, logvar = model.encoder(images)
+        reconstructed = model.decoder(mu)
+
+    original = images.cpu().permute(0, 2, 3, 1).numpy()
+    reconstructed = reconstructed.cpu().permute(0, 2, 3, 1).numpy()
+
+    fig, axes = plt.subplots(2, num_images, figsize=(15, 5))
+
+    for i in range(num_images):
+        axes[0, i].imshow(original[i])
+        axes[0, i].axis("off")
+        axes[1, i].imshow(reconstructed[i])
+        axes[1, i].axis("off")
+
+    axes[0, 0].set_title("Original")
+    axes[1, 0].set_title("μ Reconstruction")
+
+    plt.tight_layout()
+    plt.show()
+
+
 def get_beta(epoch, total_epochs, max_beta=1.0):
     progress = epoch / (total_epochs - 1)
     beta = max_beta * progress
@@ -237,21 +265,76 @@ def get_beta(epoch, total_epochs, max_beta=1.0):
 
 
 def inspect_latent_statistics(model, dataloader, device):
+
     model.eval()
+
     all_mu = []
+    all_logvar = []
 
     with torch.no_grad():
         for images in dataloader:
             images = images.to(device)
             mu, logvar = model.encoder(images)
             all_mu.append(mu.cpu())
-    all_mu = torch.cat(all_mu, dim=0)
+            all_logvar.append(logvar.cpu())
 
-    print("Latent shape:", all_mu.shape)
+    all_mu = torch.cat(all_mu, dim=0)
+    all_logvar = torch.cat(all_logvar, dim=0)
+
+    print("\n--- MU STATISTICS ---")
+    print("Shape:", all_mu.shape)
     print("Mean:", all_mu.mean().item())
     print("Std:", all_mu.std().item())
     print("Min:", all_mu.min().item())
     print("Max:", all_mu.max().item())
+
+    print("\n--- LOGVAR STATISTICS ---")
+    print("Mean:", all_logvar.mean().item())
+    print("Std:", all_logvar.std().item())
+    print("Min:", all_logvar.min().item())
+    print("Max:", all_logvar.max().item())
+
+    variance = torch.exp(all_logvar)
+
+    print("\n--- VARIANCE STATISTICS ---")
+    print("Mean:", variance.mean().item())
+    print("Std:", variance.std().item())
+    print("Min:", variance.min().item())
+    print("Max:", variance.max().item())
+
+
+def visualize_latent_dimensions(model, dataloader, device):
+    model.eval()
+
+    all_mu = []
+
+    with torch.no_grad():
+        for images in dataloader:
+            images = images.to(device)
+            mu, _ = model.encoder(images)
+            all_mu.append(mu.cpu())
+
+    all_mu = torch.cat(all_mu, dim=0)
+    plt.figure(figsize=(8, 6))
+    plt.scatter(all_mu[:, 0], all_mu[:, 1])
+
+    plt.xlabel("Latent Dimension 1")
+    plt.ylabel("Latent Dimension 2")
+    plt.title("Latent Space: μ₁ vs μ₂")
+
+    plt.show()
+
+
+def load_last_best_state():
+    checkpoint = torch.load("vae_best.pth", map_location=device)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.eval()
+    print("Loaded best model from epoch:", checkpoint["epoch"])
+    print("Best validation loss:", checkpoint["val_loss"])
+
+    # visualization and inspection
+    visualize_reconstructions(model, val_loader, device)
+    inspect_latent_statistics(model, val_loader, device)
 
 
 if __name__ == "__main__":
@@ -378,3 +461,12 @@ if __name__ == "__main__":
 
     # inspect our latent space
     inspect_latent_statistics(model, val_loader, device)
+
+    # visualize only mu reconstruction
+    visualize_mu_reconstructions(model, val_loader, device)
+
+    # visualize stripped down latent dimension
+    visualize_latent_dimensions(model, val_loader, device)
+
+    # load best model state
+    load_last_best_state()
