@@ -258,9 +258,10 @@ def visualize_mu_reconstructions(model, dataloader, device, num_images=6):
     plt.show()
 
 
-def get_beta(epoch, total_epochs, max_beta=1.0):
-    progress = epoch / (total_epochs - 1)
-    beta = max_beta * progress
+def get_beta(epoch, total_epochs):
+    # progress = epoch / (total_epochs - 1)
+    # beta = max_beta * progress
+    beta = MAX_BETA * epoch / (total_epochs - 1)
     return beta
 
 
@@ -337,6 +338,60 @@ def load_last_best_state():
     inspect_latent_statistics(model, val_loader, device)
 
 
+def inspect_latent_dimensions(model, dataloader, device):
+    model.eval()
+
+    all_mu = []
+    all_logvar = []
+
+    with torch.no_grad():
+        for images in dataloader:
+            images = images.to(device)
+            mu, logvar = model.encoder(images)
+            all_mu.append(mu.cpu())
+            all_logvar.append(logvar.cpu())
+
+    all_mu = torch.cat(all_mu, dim=0)
+    all_logvar = torch.cat(all_logvar, dim=0)
+
+    mu_std_per_dimension = all_mu.std(dim=0)
+    logvar_std_per_dimension = all_logvar.std(dim=0)
+
+    print("\n--- PER-DIMENSION MU STD ---")
+
+    for i, value in enumerate(mu_std_per_dimension):
+        print(f"Latent {i:3d}: {value.item():.8f}")
+
+    print("\n--- PER-DIMENSION LOGVAR STD ---")
+
+    for i, value in enumerate(logvar_std_per_dimension):
+        print(f"Latent {i:3d}: {value.item():.8f}")
+
+
+def plot_latent_dimension_usage(model, dataloader, device):
+    model.eval()
+    all_mu = []
+
+    with torch.no_grad():
+        for images in dataloader:
+            images = images.to(device)
+            mu, _ = model.encoder(images)
+            all_mu.append(mu.cpu())
+
+    all_mu = torch.cat(all_mu, dim=0)
+    mu_std = all_mu.std(dim=0)
+    plt.figure(figsize=(12, 5))
+
+    plt.bar(range(len(mu_std)), mu_std.numpy())
+
+    plt.xlabel("Latent Dimension")
+    plt.ylabel("Standard Deviation Across Images")
+    plt.title("Latent Dimension Usage")
+
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == "__main__":
     random.seed(42)
 
@@ -382,7 +437,8 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     EPOCHS = 50
-    MAX_BETA = 1.0
+    # MAX_BETA = 1.0
+    MAX_BETA = 0.1
 
     train_total_history = []
     train_recon_history = []
@@ -396,7 +452,7 @@ if __name__ == "__main__":
 
     for epoch in range(EPOCHS):
 
-        beta = get_beta(epoch, EPOCHS, max_beta=MAX_BETA)
+        beta = get_beta(epoch, EPOCHS)
 
         # ------------------
         # Training
@@ -430,7 +486,7 @@ if __name__ == "__main__":
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "latent_dim": 128,
-                "beta": beta,
+                "max_beta": MAX_BETA,
                 "epoch": epoch + 1,
                 "val_loss": val_loss,
             }
@@ -448,7 +504,7 @@ if __name__ == "__main__":
             f"| Train KL: {train_kl:.8f} "
             f"| Val Loss: {val_loss:.6f} "
             f"| Val Recon: {val_recon:.6f} "
-            f"| Val KL: {val_kl:.8f}"
+            f"| Val KL: {val_kl:.6f}"
         )
 
     # plot histories
@@ -468,5 +524,11 @@ if __name__ == "__main__":
     # visualize stripped down latent dimension
     visualize_latent_dimensions(model, val_loader, device)
 
+    # inspect indepth latent dimension
+    inspect_latent_dimensions(model, val_loader, device)
+
+    # plot bar chart latent dimension usage 
+    plot_latent_dimension_usage(model, val_loader,device)
+
     # load best model state
-    load_last_best_state()
+    # load_last_best_state()
