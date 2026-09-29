@@ -392,6 +392,112 @@ def plot_latent_dimension_usage(model, dataloader, device):
     plt.show()
 
 
+def compare_latent_effects(model, dataloader, device, num_images=4):
+    model.eval()
+
+    images = next(iter(dataloader))
+    images = images[:num_images].to(device)
+
+    with torch.no_grad():
+        mu, logvar = model.encoder(images)
+
+        # Normal stochastic latent
+        z_normal = reparameterize(mu, logvar)
+
+        # Deterministic latent
+        z_mu = mu
+
+        # Completely zero latent
+        z_zero = torch.zeros_like(mu)
+
+        # Random latent from standard normal
+        z_random = torch.randn_like(mu)
+
+        # Decode all versions
+        recon_normal = model.decoder(z_normal)
+        recon_mu = model.decoder(z_mu)
+        recon_zero = model.decoder(z_zero)
+        recon_random = model.decoder(z_random)
+
+    fig, axes = plt.subplots(5, num_images, figsize=(15, 12))
+
+    for i in range(num_images):
+
+        axes[0, i].imshow(images[i].cpu().permute(1, 2, 0).numpy())
+        axes[0, i].axis("off")
+
+        axes[1, i].imshow(recon_normal[i].cpu().permute(1, 2, 0).numpy())
+        axes[1, i].axis("off")
+
+        axes[2, i].imshow(recon_mu[i].cpu().permute(1, 2, 0).numpy())
+        axes[2, i].axis("off")
+
+        axes[3, i].imshow(recon_zero[i].cpu().permute(1, 2, 0).numpy())
+        axes[3, i].axis("off")
+
+        axes[4, i].imshow(recon_random[i].cpu().permute(1, 2, 0).numpy())
+        axes[4, i].axis("off")
+
+    axes[0, 0].set_title("Original")
+    axes[1, 0].set_title("Normal z")
+    axes[2, 0].set_title("μ")
+    axes[3, 0].set_title("Zero z")
+    axes[4, 0].set_title("Random z")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def analyze_latent_dimensions(model, dataloader, device):
+    model.eval()
+
+    all_mu = []
+    all_logvar = []
+
+    with torch.no_grad():
+        for images in dataloader:
+            images = images.to(device)
+
+            mu, logvar = model.encoder(images)
+
+            all_mu.append(mu.cpu())
+            all_logvar.append(logvar.cpu())
+
+    all_mu = torch.cat(all_mu, dim=0)
+    all_logvar = torch.cat(all_logvar, dim=0)
+
+    variance = torch.exp(all_logvar)
+
+    kl_per_dimension = 0.5 * (all_mu.pow(2) + variance - 1 - all_logvar)
+
+    mean_kl_per_dimension = kl_per_dimension.mean(dim=0)
+
+    print("\n--- PER-DIMENSION KL ---")
+
+    for i, value in enumerate(mean_kl_per_dimension):
+        print(f"Latent {i:3d}: KL = {value.item():.8f}")
+
+    print("\n--- SUMMARY ---")
+
+    print("Active dimensions (> 0.001):", (mean_kl_per_dimension > 0.001).sum().item())
+
+    print(
+        "Active dimensions (> 0.0001):", (mean_kl_per_dimension > 0.0001).sum().item()
+    )
+
+    print("Maximum dimension KL:", mean_kl_per_dimension.max().item())
+
+    plt.figure(figsize=(10, 5))
+
+    plt.bar(range(len(mean_kl_per_dimension)), mean_kl_per_dimension.numpy())
+
+    plt.xlabel("Latent Dimension")
+    plt.ylabel("Mean KL")
+    plt.title("KL Contribution per Latent Dimension")
+
+    plt.show()
+
+
 if __name__ == "__main__":
     random.seed(42)
 
@@ -527,8 +633,14 @@ if __name__ == "__main__":
     # inspect indepth latent dimension
     inspect_latent_dimensions(model, val_loader, device)
 
-    # plot bar chart latent dimension usage 
-    plot_latent_dimension_usage(model, val_loader,device)
+    # plot bar chart latent dimension usage
+    plot_latent_dimension_usage(model, val_loader, device)
 
     # load best model state
     # load_last_best_state()
+
+    # compare the latent space effects
+    compare_latent_effects(model, val_loader, device)
+
+    # analyze specific/individual latent dimension numbers
+    analyze_latent_dimensions(model, val_loader, device)
