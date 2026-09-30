@@ -544,7 +544,8 @@ if __name__ == "__main__":
 
     EPOCHS = 50
     # MAX_BETA = 1.0
-    MAX_BETA = 0.1
+    # MAX_BETA = 0.1
+    MAX_BETA = 0.0
 
     train_total_history = []
     train_recon_history = []
