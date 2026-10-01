@@ -334,8 +334,8 @@ def load_last_best_state():
     print("Best validation loss:", checkpoint["val_loss"])
 
     # visualization and inspection
-    visualize_reconstructions(model, val_loader, device)
-    inspect_latent_statistics(model, val_loader, device)
+    # visualize_reconstructions(model, val_loader, device)
+    # inspect_latent_statistics(model, val_loader, device)
 
 
 def inspect_latent_dimensions(model, dataloader, device):
@@ -499,7 +499,13 @@ def analyze_latent_dimensions(model, dataloader, device):
 
 
 if __name__ == "__main__":
-    random.seed(42)
+    SEED = 42
+
+    random.seed(SEED)
+    torch.manual_seed(SEED)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(SEED)
 
     FOLDER_PATH = "my_dataset"
 
@@ -543,9 +549,20 @@ if __name__ == "__main__":
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     EPOCHS = 50
+    """
+        β = 0
+        β = .001
+        β = .005
+        β = .01
+        β = .02
+        β = .05
+        β = .1
+    """
+    # MAX_BETA = 0.0
     # MAX_BETA = 1.0
     # MAX_BETA = 0.1
-    MAX_BETA = 0.0
+    # MAX_BETA = 0.001
+    MAX_BETA = 0.005
 
     train_total_history = []
     train_recon_history = []
@@ -614,6 +631,11 @@ if __name__ == "__main__":
             f"| Val KL: {val_kl:.6f}"
         )
 
+    # ---------------------
+    # very important, load the best model
+    # --------------------
+    load_last_best_state()
+
     # plot histories
     plot_training_history(train_total_history, val_total_history, "Total VAE Loss")
     plot_training_history(train_recon_history, val_recon_history, "Reconstruction Loss")
@@ -636,9 +658,6 @@ if __name__ == "__main__":
 
     # plot bar chart latent dimension usage
     plot_latent_dimension_usage(model, val_loader, device)
-
-    # load best model state
-    # load_last_best_state()
 
     # compare the latent space effects
     compare_latent_effects(model, val_loader, device)
