@@ -479,10 +479,30 @@ def analyze_latent_dimensions(model, dataloader, device):
 
     print("\n--- SUMMARY ---")
 
-    print("Active dimensions (> 0.001):", (mean_kl_per_dimension > 0.001).sum().item())
+    print("Active dimensions (> 0.000):", (mean_kl_per_dimension > 0.000).sum().item()) 
+
+    print(
+        "Active dimensions (> 0.00005):", (mean_kl_per_dimension > 0.00005).sum().item()
+    )
 
     print(
         "Active dimensions (> 0.0001):", (mean_kl_per_dimension > 0.0001).sum().item()
+    )
+
+    print(
+        "Active dimensions (> 0.00025):", (mean_kl_per_dimension > 0.00025).sum().item()
+    )
+
+    print(
+        "Active dimensions (> 0.0005):", (mean_kl_per_dimension > 0.0005).sum().item()
+    )
+
+    print(
+        "Active dimensions (> 0.00075):", (mean_kl_per_dimension > 0.00075).sum().item()
+    )
+
+    print(
+        "Active dimensions (> 0.001):", (mean_kl_per_dimension > 0.001).sum().item()
     )
 
     print(
@@ -579,7 +599,13 @@ if __name__ == "__main__":
     # MAX_BETA = 0.005
 
     # zooming in on interesting part of the curve (from notes.md, between 0.0 & 0.001)
-    MAX_BETA = 0.00005
+    # MAX_BETA = 0.00005
+    # MAX_BETA = 0.0001
+    # MAX_BETA = 0.00025
+    # MAX_BETA = 0.0005
+    # MAX_BETA = 0.00075  
+    # MAX_BETA = 0.001
+    MAX_BETA = 0.005
 
     train_total_history = []
     train_recon_history = []
@@ -590,6 +616,8 @@ if __name__ == "__main__":
     val_kl_history = []
 
     best_val_loss = float("inf")
+
+    print("USING MAX BETA OF", MAX_BETA)
 
     for epoch in range(EPOCHS):
 
@@ -639,7 +667,7 @@ if __name__ == "__main__":
         # ---------------------
         print(
             f"Epoch [{epoch + 1}/{EPOCHS}] "
-            f"| Beta: {beta:.4f} "
+            f"| Beta: {beta:.6f} "
             f"| Train Loss: {train_loss:.6f} "
             f"| Train Recon: {train_recon:.6f} "
             f"| Train KL: {train_kl:.8f} "
