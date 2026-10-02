@@ -485,6 +485,10 @@ def analyze_latent_dimensions(model, dataloader, device):
         "Active dimensions (> 0.0001):", (mean_kl_per_dimension > 0.0001).sum().item()
     )
 
+    print(
+        "Active dimensions (> 0.005):", (mean_kl_per_dimension > 0.005).sum().item()
+    )
+
     print("Maximum dimension KL:", mean_kl_per_dimension.max().item())
 
     plt.figure(figsize=(10, 5))
@@ -550,6 +554,7 @@ if __name__ == "__main__":
 
     EPOCHS = 50
     """
+        --- OLD (experimental) ---
         β = 0
         β = .001
         β = .005
@@ -557,12 +562,24 @@ if __name__ == "__main__":
         β = .02
         β = .05
         β = .1
+
+        --- NEW (zooming in on interesting parts) ---
+        β = 0
+        β = 0.00005
+        β = 0.0001
+        β = 0.00025
+        β = 0.0005
+        β = 0.00075
+        β = 0.001
     """
     # MAX_BETA = 0.0
     # MAX_BETA = 1.0
     # MAX_BETA = 0.1
     # MAX_BETA = 0.001
-    MAX_BETA = 0.005
+    # MAX_BETA = 0.005
+
+    # zooming in on interesting part of the curve (from notes.md, between 0.0 & 0.001)
+    MAX_BETA = 0.00005
 
     train_total_history = []
     train_recon_history = []
