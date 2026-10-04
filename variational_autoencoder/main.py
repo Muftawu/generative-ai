@@ -591,6 +591,19 @@ if __name__ == "__main__":
         β = 0.0005
         β = 0.00075
         β = 0.001
+
+        --- NEXT BETA VALUE ZOOM IN SEQUENCE
+        β = 0
+        β = 0.00001
+        β = 0.000025
+        β = 0.00005
+        β = 0.000075
+        β = 0.0001
+        β = 0.000125
+        β = 0.00015
+        β = 0.000175
+        β = 0.0002
+        β = 0.00025
     """
     # MAX_BETA = 0.0
     # MAX_BETA = 1.0
@@ -605,7 +618,12 @@ if __name__ == "__main__":
     # MAX_BETA = 0.0005
     # MAX_BETA = 0.00075  
     # MAX_BETA = 0.001
-    MAX_BETA = 0.005
+    # MAX_BETA = 0.005
+
+    # next zooming in values to locate sweet spot for beta
+    MAX_BETA = 0.00001
+
+
 
     train_total_history = []
     train_recon_history = []
