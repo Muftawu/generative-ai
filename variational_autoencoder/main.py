@@ -479,34 +479,8 @@ def analyze_latent_dimensions(model, dataloader, device):
 
     print("\n--- SUMMARY ---")
 
-    print("Active dimensions (> 0.000):", (mean_kl_per_dimension > 0.000).sum().item()) 
-
-    print(
-        "Active dimensions (> 0.00005):", (mean_kl_per_dimension > 0.00005).sum().item()
-    )
-
-    print(
-        "Active dimensions (> 0.0001):", (mean_kl_per_dimension > 0.0001).sum().item()
-    )
-
     print(
         "Active dimensions (> 0.00025):", (mean_kl_per_dimension > 0.00025).sum().item()
-    )
-
-    print(
-        "Active dimensions (> 0.0005):", (mean_kl_per_dimension > 0.0005).sum().item()
-    )
-
-    print(
-        "Active dimensions (> 0.00075):", (mean_kl_per_dimension > 0.00075).sum().item()
-    )
-
-    print(
-        "Active dimensions (> 0.001):", (mean_kl_per_dimension > 0.001).sum().item()
-    )
-
-    print(
-        "Active dimensions (> 0.005):", (mean_kl_per_dimension > 0.005).sum().item()
     )
 
     print("Maximum dimension KL:", mean_kl_per_dimension.max().item())
@@ -566,33 +540,22 @@ if __name__ == "__main__":
 
     print("Using device:", device)
 
-    # model
-    model = VAE(latent_dim=128).to(device)
+    # latent dims to try out 
+    """
+    lat_dim = 16
+    lat_dim = 32
+    lat_dim = 64
+    lat_dim = 128
+    """
+    latent_dim = 16
+    model = VAE(latent_dim=latent_dim).to(device)
+    print(f"instantiating model with latent dimension of: {latent_dim}")
 
     # optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
     EPOCHS = 50
     """
-        --- OLD (experimental) ---
-        β = 0
-        β = .001
-        β = .005
-        β = .01
-        β = .02
-        β = .05
-        β = .1
-
-        --- NEW (zooming in on interesting parts) ---
-        β = 0
-        β = 0.00005
-        β = 0.0001
-        β = 0.00025
-        β = 0.0005
-        β = 0.00075
-        β = 0.001
-
-        --- NEXT BETA VALUE ZOOM IN SEQUENCE
         β = 0
         β = 0.00001
         β = 0.000025
@@ -605,25 +568,18 @@ if __name__ == "__main__":
         β = 0.0002
         β = 0.00025
     """
-    # MAX_BETA = 0.0
-    # MAX_BETA = 1.0
-    # MAX_BETA = 0.1
-    # MAX_BETA = 0.001
-    # MAX_BETA = 0.005
-
-    # zooming in on interesting part of the curve (from notes.md, between 0.0 & 0.001)
-    # MAX_BETA = 0.00005
-    # MAX_BETA = 0.0001
-    # MAX_BETA = 0.00025
-    # MAX_BETA = 0.0005
-    # MAX_BETA = 0.00075  
-    # MAX_BETA = 0.001
-    # MAX_BETA = 0.005
-
     # next zooming in values to locate sweet spot for beta
-    MAX_BETA = 0.00001
-
-
+    # MAX_BETA = 0.00000
+    # MAX_BETA = 0.00001
+    MAX_BETA = 0.000025
+    # MAX_BETA = 0.00005
+    # MAX_BETA = 0.000075
+    # MAX_BETA = 0.0001
+    # MAX_BETA = 0.000125
+    # MAX_BETA = 0.00015
+    # MAX_BETA = 0.000175
+    # MAX_BETA = 0.0002
+    # MAX_BETA = 0.00025 
 
     train_total_history = []
     train_recon_history = []
